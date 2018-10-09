@@ -8,8 +8,6 @@
 
 import UIKit
 
-class Walks: NSObject {
-    
     struct Welcome: Decodable {
         let status, selectedLocale: String
         let walks: [Walk]
@@ -71,4 +69,3 @@ class Walks: NSObject {
     
 
 
-}

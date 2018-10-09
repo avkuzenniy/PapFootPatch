@@ -11,7 +11,6 @@ import MapKit
 
 class DetailViewController: UIViewController {
     
-    var sentData1, sentData2, sentData3: String!
     var sentData4, sentData5: Double!
     var data: WalksData!
     
@@ -31,25 +30,18 @@ class DetailViewController: UIViewController {
         directionButton.layer.cornerRadius = 5
         detailMapView.layer.cornerRadius = 5
         
-        self.navigationItem.title = sentData1
-        detailTitle.text = sentData1
-        detailTextView.text = sentData2
+        self.navigationItem.title = data.walkTitle
+        detailTitle.text = data.walkTitle
+        detailTextView.text = data.walkDescription
         
-        //self.detailImageView.downLoadIllustration(from: <#T##String#>) = UIImage(data: data!)
-        
-//        var urlIcon = "http://www.ifootpath.com/upload/"
-//        urlIcon.append(sentData3)
-//        let urlRequest = URLRequest(url: URL(string: urlIcon)!)
-//        let task = URLSession.shared.dataTask(with: urlRequest) {(data,responder,error) in
-//            if error != nil {
-//                print(error!)
-//                return
-//            }
-//            DispatchQueue.main.async {
-//                self.detailImageView.image = UIImage(data: data!)
-//            }
-//        }
-//        task.resume()
+//        let url = "http://www.ifootpath.com/upload/"+data.walkIllustration!
+//        self.detailImageView.downLoadIcon(from: url)
+//        
+//        SavedImageToFile(url: url, name: data.walkIllustration!)
+        if let img = getSavedImage(named: data.walkIllustration!) {
+            self.detailImageView.image = img
+            // do something with image
+        }
         
         latitude = sentData4
         longitude = sentData5
@@ -68,7 +60,6 @@ class DetailViewController: UIViewController {
         self.detailMapView.addAnnotation(pinAnn)
 
     }
-    
 
     /*
     // MARK: - Navigation
@@ -84,23 +75,46 @@ class DetailViewController: UIViewController {
         UIApplication.shared.open(URL(string: "http://maps.apple.com/maps?daddr=\(latitude),\(longitude)")!, options: [:], completionHandler: nil)
     }
     
+    func SavedImageToFile (url: String, name: String) {
+        let urlRequest = URLRequest(url: URL(string: url)!)
+        let task = URLSession.shared.dataTask(with: urlRequest) {(data,responder,error) in
+            
+            if error != nil {
+                print(error!)
+                return
+            }
+            DispatchQueue.main.async {
+                
+                let image = UIImage(data: data!)
+                let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+                //print(documentsDirectory)
+                // выберите имя для своего изображения
+                let fileName = name
+                // создать URL-адрес целевого файла для сохранения изображения
+                let fileURL = documentsDirectory.appendingPathComponent(fileName)
+                // получить представление данных jpeg UIImage и проверить, существует ли URL-адрес целевого файлаs
+                if let data = image!.pngData(),
+                    !FileManager.default.fileExists(atPath: fileURL.path) {
+                    do {
+                        // записывает данные изображения на диск
+                        try data.write(to: fileURL)
+                        //print("file saved")
+                    } catch {
+                        print("error saving file:", error)
+                    }
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    //load image from file
+    func getSavedImage(named: String) -> UIImage? {
+        if let dir = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false) {
+            return UIImage(contentsOfFile: URL(fileURLWithPath: dir.absoluteString).appendingPathComponent(named).path)
+        }
+        return nil
+    }
+    
 }
 
-//extension UIImageView {
-//    func downLoadIllustration(from url: String) {
-//        var urlIcon = "http://www.ifootpath.com/upload/"
-//        urlIcon.append(url)
-//        //print(urlIcon)
-//        let urlRequest = URLRequest(url: URL(string: urlIcon)!)
-//        let task = URLSession.shared.dataTask(with: urlRequest) {(data,responder,error) in
-//            if error != nil {
-//                print(error!)
-//                return
-//            }
-//            DispatchQueue.main.async {
-//                self.image = UIImage(data: data!)
-//            }
-//        }
-//        task.resume()
-//    }
-//}

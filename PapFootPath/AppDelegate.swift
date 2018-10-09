@@ -8,23 +8,23 @@
 
 import UIKit
 import CoreData
+import Foundation
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
     lazy var coreDataStack = CoreDataStack()
+    var optionallyStoreTheFirstLaunchFlag = false
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+//        let fileManager = FileManager.default
+//        let directory = NSSearchPathForDirectoriesInDomains(.applicationSupportDirectory, .userDomainMask, true).first!
+//
         
-        if UserDefaults.standard.bool(forKey: "firstBoot") == true {
-            
-            
-        } else {
-            UserDefaults.standard.set(true, forKey: "firstBoot")
-            UserDefaults.standard.synchronize()
-        }
+        optionallyStoreTheFirstLaunchFlag = UserDefaults.isFirstLaunch()
+        
         return true
     }
 
@@ -52,3 +52,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 
+extension UserDefaults {
+    // check for is first launch - only true on first invocation after app install, false on all further invocations
+    // Note: Store this value in AppDelegate if you have multiple places where you are checking for this flag
+    static func isFirstLaunch() -> Bool {
+        let hasBeenLaunchedBeforeFlag = "hasBeenLaunchedBeforeFlag"
+        let isFirstLaunch = !UserDefaults.standard.bool(forKey: hasBeenLaunchedBeforeFlag)
+        if (isFirstLaunch) {
+            UserDefaults.standard.set(true, forKey: hasBeenLaunchedBeforeFlag)
+            UserDefaults.standard.synchronize()
+        }
+        return isFirstLaunch
+    }
+}

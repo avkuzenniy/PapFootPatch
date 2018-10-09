@@ -12,57 +12,51 @@ import CoreData
 class TableViewController: UITableViewController {
     
     var urlIcon = "http://www.ifootpath.com/upload/thumbs/"
+    var urlIlustration = "http://www.ifootpath.com/upload/"
     var fetchResultController: NSFetchedResultsController<WalksData>!
     var walksData = [WalksData]()
+    var walks = [WalksData]()
+    let isFirstLaunch = UserDefaults.isFirstLaunch()
     
     @IBAction func addWalks(_ sender: Any) {
         fetchWalks()
     }
     
-    var walks: [WalksData]? = []
-    //var urlImage = "http://www.ifootpath.com/upload/"
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        //        if UserDefaults.standard.bool(forKey: "firstBoot") == true {
-        //
-        //
-        //        } else {
-        //            UserDefaults.standard.set(true, forKey: "firstBoot")
-        //            UserDefaults.standard.synchronize()
-        //        }
         
-        
-        if firstBoot() {
+        if isFirstLaunch {
             fetchWalks()
+            //print("JSON+CORE+\(isFirstLaunch)")
             
-            UserDefaults.standard.set(false, forKey: "firstBoot")
-            UserDefaults.standard.synchronize()
+        } else {
+            //print("CORE+\(isFirstLaunch)")
+            loadWalksCoreData()
         }
-        
-        saveCoreData()
+
         self.navigationItem.backBarButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
+    }
+    
+    func loadWalksCoreData() {
+        let fetchRequest: NSFetchRequest<WalksData> = WalksData.fetchRequest()
+        let sortDescriptor = NSSortDescriptor(key: "walkTitle", ascending: true)
+        fetchRequest.sortDescriptors = [sortDescriptor]
         
-                let fetchRequest: NSFetchRequest<WalksData> = WalksData.fetchRequest()
-                let sortDescriptor = NSSortDescriptor(key: "walkTitle", ascending: true)
-                fetchRequest.sortDescriptors = [sortDescriptor]
-        
-                if let context = (UIApplication.shared.delegate as? AppDelegate)?.coreDataStack.persistentContainer.viewContext {
-                    fetchResultController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
-        
-                    do {
-                        try fetchResultController.performFetch()
-                        walks? = fetchResultController.fetchedObjects!
-                    } catch let error as NSError {
-                        print(error.localizedDescription)
-                    }
-                }
-        
+        if let context = (UIApplication.shared.delegate as? AppDelegate)?.coreDataStack.persistentContainer.viewContext {
+            fetchResultController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
+            
+            do {
+                try fetchResultController.performFetch()
+                walks = fetchResultController.fetchedObjects!
+                
+            } catch let error as NSError {
+                print(error.localizedDescription)
+            }
+        }
     }
     
     func firstBoot() -> Bool {
-        
         return UserDefaults.standard.bool(forKey: "firstBoot")
     }
     
@@ -76,26 +70,14 @@ class TableViewController: UITableViewController {
             guard let data = data else {return}
             
             do {
-                let webSiteDescription = try JSONDecoder().decode(Walks.Welcome.self, from: data)
-                
-                for one in webSiteDescription.walks {
-                    let walk = WalksData()
-                    
-                    DispatchQueue.main.async {
-                        walk.walkTitle = one.walkTitle
-                        walk.walkDescription = one.walkDescription
-                        walk.walkIcon = one.walkIcon
-                        walk.walkIllustration = one.walkIllustration
-                        walk.walkStartCoordLat = one.walkStartCoordLat
-                        walk.walkStartCoordLong = one.walkStartCoordLong
-                        walk.walkID = one.walkID
-                        walk.walkRating = one.walkRating
-                        
-                        self.walks?.append(walk)
-                        
-                        self.tableView.reloadData();
-                    }
-                }
+                let webSiteDescription = try JSONDecoder().decode(Welcome.self, from: data)
+               
+            DispatchQueue.main.async {
+                self.saveCoreData(data:webSiteDescription.walks)
+                self.loadWalksCoreData()
+                self.tableView.reloadData()
+            }
+            
             }catch let jsonErr {
                 print(jsonErr)
             }
@@ -103,25 +85,56 @@ class TableViewController: UITableViewController {
             } .resume()
     }
     
-    func saveCoreData() {
+    func saveCoreData(data:[Walk]) {
+        let context = (UIApplication.shared.delegate as? AppDelegate)?.coreDataStack.persistentContainer.viewContext
+        
+        if walks.isEmpty {
+            let emptyWalksData = WalksData(context: context!)
+            emptyWalksData.walkDescription = ""
+            emptyWalksData.walkIcon = ""
+            emptyWalksData.walkID = ""
+            emptyWalksData.walkIllustration = ""
+            emptyWalksData.walkRating = ""
+            emptyWalksData.walkStartCoordLat = ""
+            emptyWalksData.walkStartCoordLong = ""
+            emptyWalksData.walkTitle = ""
+            walks.append(emptyWalksData)
+        }
         
         if let context = (UIApplication.shared.delegate as? AppDelegate)?.coreDataStack.persistentContainer.viewContext {
-            let walksData = WalksData(context: context)
             
-            for one in walks! {
-                walksData.walkTitle = one.walkTitle
-                walksData.walkDescription = one.walkDescription
-                walksData.walkIcon = one.walkIcon
-                walksData.walkIllustration = one.walkIllustration
-                walksData.walkStartCoordLat = one.walkStartCoordLat
-                walksData.walkStartCoordLong = one.walkStartCoordLong
-                walksData.walkID = one.walkID
-                walksData.walkRating = one.walkRating
+            for one in data {
+                for i in walks {
+                    
+                    if i.walkID == one.walkID {
+                        break
+                    } else if(i == walks[walks.endIndex - 1]) {
+                        let walksData = WalksData(context: context)
+                        walksData.walkTitle = one.walkTitle
+                        
+                        walksData.walkDescription = one.walkDescription
+                        
+                        // douwn load json image icon end save to file
+                        let url = urlIcon+one.walkIcon
+                        SavedImageToFile(url: url, name: one.walkIcon)
+                        if one.walkIllustration != nil {
+                            let url2 = urlIlustration+one.walkIllustration!
+                            SavedImageToFile(url: url2, name: one.walkIllustration!)
+                        }
+                        walksData.walkIcon = one.walkIcon
+                        walksData.walkIllustration = one.walkIllustration
+                        walksData.walkStartCoordLat = one.walkStartCoordLat
+                        walksData.walkStartCoordLong = one.walkStartCoordLong
+                        walksData.walkID = one.walkID
+                        walksData.walkRating = one.walkRating
+                        
+                        self.tableView.reloadData();
+                    }
             }
-
+            }
             do {
                 try context.save()
-                print("sssssssssssssssssssssss Core Data save complit")
+                print("Core Data save complit")
             } catch let error {
                 print("\(error)")
             }
@@ -142,25 +155,68 @@ class TableViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         // #warning Incomplete implementation, return the number of rows
-        return walks?.count ?? 0
+        return walks.count
     }
     
+    func SavedImageToFile (url: String, name: String) {
+        let urlRequest = URLRequest(url: URL(string: url)!)
+        let task = URLSession.shared.dataTask(with: urlRequest) {(data,responder,error) in
+            
+            if error != nil {
+                print(error!)
+                return
+            }
+            DispatchQueue.main.async {
+                
+                let image = UIImage(data: data!)
+                let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+                //print(documentsDirectory)
+                // выберите имя для своего изображения
+                let fileName = name
+                // создать URL-адрес целевого файла для сохранения изображения
+                let fileURL = documentsDirectory.appendingPathComponent(fileName)
+                // получить представление данных jpeg UIImage и проверить, существует ли URL-адрес целевого файлаs
+                if image != nil {
+                if let data = image!.pngData(),
+                    !FileManager.default.fileExists(atPath: fileURL.path) {
+                    do {
+                        // записывает данные изображения на диск
+                        try data.write(to: fileURL)
+                        print("file saved")
+                    } catch {
+                        print("error saving file:", error)
+                    }
+                    }
+                    
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    //load image from file
+    func getSavedImage(named: String) -> UIImage? {
+        if let dir = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false) {
+            return UIImage(contentsOfFile: URL(fileURLWithPath: dir.absoluteString).appendingPathComponent(named).path)
+        }
+        return nil
+    }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath) as! TableViewCell
         
-        cell.cellTitle.text = self.walks?[indexPath.item].walkTitle
-        cell.cellDescription.text = self.walks?[indexPath.item].walkDescription
+        cell.cellTitle.text = self.walks[indexPath.item].walkTitle
+        cell.cellDescription.text = self.walks[indexPath.item].walkDescription
         
-        if self.walks?[indexPath.item].walkIcon != nil {
-            let url = urlIcon+(self.walks?[indexPath.item].walkIcon)!
-            cell.cellImage.downLoadIcon(from: url )
-        }
-        
-        if self.walks?[indexPath.item].walkIllustration != nil {
+        if self.walks[indexPath.item].walkIcon != nil {
+//            let url = urlIcon+(self.walks[indexPath.item].walkIcon)!
+//            cell.cellImage.downLoadIcon(from: url)
             
+            if let img = getSavedImage(named: walks[indexPath.item].walkIcon!) {
+                cell.cellImage.image = img
+                // do something with image
+            }
         }
-        
         return cell
     }
     
@@ -178,10 +234,23 @@ class TableViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             
-            // Delete the row from the data source
-            self.walks?.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .fade)
+            if walks.count>indexPath.row {
+                let walk = walks[indexPath.row]
+                let context = (UIApplication.shared.delegate as? AppDelegate)?.coreDataStack.persistentContainer.viewContext
+                
+                context!.delete(walk as NSManagedObject)
+
+                self.walks.remove(at: indexPath.row)
+                tableView.deleteRows(at: [indexPath], with: .fade)
+                
+                do {
+                    try context!.save()
+                } catch let error {
+                    print("\(error)")
+                }
+            }
             
+            // Delete the row from the data source
         } else if editingStyle == .insert {
             // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
         }    
@@ -212,44 +281,19 @@ class TableViewController: UITableViewController {
         if (segue.identifier == "showDetail") {
             let detailViewController = segue.destination as! DetailViewController
             if let indexPath = self.tableView.indexPathForSelectedRow {
-                detailViewController.sentData1 = walks?[indexPath.row].walkTitle
-                detailViewController.sentData2 = walks?[indexPath.row].walkDescription
-                detailViewController.sentData3 = walks?[indexPath.row].walkIllustration
+                detailViewController.data = walks[indexPath.row]
                 
-                detailViewController.sentData4 = NumberFormatter().number(from: (walks?[indexPath.row].walkStartCoordLat)!)?.doubleValue
-                detailViewController.sentData5 = NumberFormatter().number(from: (walks?[indexPath.row].walkStartCoordLong)!)?.doubleValue
+                detailViewController.sentData4 = NumberFormatter().number(from: (walks[indexPath.row].walkStartCoordLat)!)?.doubleValue
+                detailViewController.sentData5 = NumberFormatter().number(from: (walks[indexPath.row].walkStartCoordLong)!)?.doubleValue
             }
         }
     }
-    
 }
 
 
 extension UIImageView {
     func downLoadIcon(from url: String) {
-        //var urlIcon = "http://www.ifootpath.com/upload/thumbs/"
-        //urlIcon.append(url)
-        //print(urlIcon)
         let urlRequest = URLRequest(url: URL(string: url)!)
-        let task = URLSession.shared.dataTask(with: urlRequest) {(data,responder,error) in
-            if error != nil {
-                print(error!)
-                return
-            }
-            DispatchQueue.main.async {
-                self.image = UIImage(data: data!)
-            }
-        }
-        task.resume()
-    }
-}
-
-extension UIImageView {
-    func downLoadIllustration(from url: String) {
-        var urlIcon = "http://www.ifootpath.com/upload/"
-        urlIcon.append(url)
-        //print(urlIcon)
-        let urlRequest = URLRequest(url: URL(string: urlIcon)!)
         let task = URLSession.shared.dataTask(with: urlRequest) {(data,responder,error) in
             if error != nil {
                 print(error!)
