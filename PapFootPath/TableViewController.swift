@@ -16,22 +16,22 @@ class TableViewController: UITableViewController {
     var walksData = [WalksData]()
     
     @IBAction func addWalks(_ sender: Any) {
-         fetchWalks()
+        fetchWalks()
     }
     
-    var walks: [Walks]? = []
+    var walks: [WalksData]? = []
     //var urlImage = "http://www.ifootpath.com/upload/"
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-//        if UserDefaults.standard.bool(forKey: "firstBoot") == true {
-//
-//
-//        } else {
-//            UserDefaults.standard.set(true, forKey: "firstBoot")
-//            UserDefaults.standard.synchronize()
-//        }
+        //        if UserDefaults.standard.bool(forKey: "firstBoot") == true {
+        //
+        //
+        //        } else {
+        //            UserDefaults.standard.set(true, forKey: "firstBoot")
+        //            UserDefaults.standard.synchronize()
+        //        }
         
         
         if firstBoot() {
@@ -40,33 +40,34 @@ class TableViewController: UITableViewController {
             UserDefaults.standard.set(false, forKey: "firstBoot")
             UserDefaults.standard.synchronize()
         }
-
+        
+        saveCoreData()
         self.navigationItem.backBarButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
         
-//        let fetchRequest: NSFetchRequest<WalksData> = WalksData.fetchRequest()
-//        let sortDescriptor = NSSortDescriptor(key: "walkTitle", ascending: true)
-//        fetchRequest.sortDescriptors = [sortDescriptor]
-//
-//        if let context = (UIApplication.shared.delegate as? CoreDataStack)?.persistentContainer.viewContext {
-//            fetchResultController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
-//
-//            do {
-//                try fetchResultController.performFetch()
-//                walks = fetchResultController.fetchedObjects!
-//            } catch let error as NSError {
-//                print(error.localizedDescription)
-//            }
-//        }
-//
-  }
-
+                let fetchRequest: NSFetchRequest<WalksData> = WalksData.fetchRequest()
+                let sortDescriptor = NSSortDescriptor(key: "walkTitle", ascending: true)
+                fetchRequest.sortDescriptors = [sortDescriptor]
+        
+                if let context = (UIApplication.shared.delegate as? AppDelegate)?.coreDataStack.persistentContainer.viewContext {
+                    fetchResultController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
+        
+                    do {
+                        try fetchResultController.performFetch()
+                        walks? = fetchResultController.fetchedObjects!
+                    } catch let error as NSError {
+                        print(error.localizedDescription)
+                    }
+                }
+        
+    }
+    
     func firstBoot() -> Bool {
         
         return UserDefaults.standard.bool(forKey: "firstBoot")
     }
     
     func fetchWalks() {
-     
+        
         let jsonUrlString = "http://www.ifootpath.com/API/get_walks.php"
         
         guard let url = URL(string: jsonUrlString) else { return }
@@ -78,14 +79,10 @@ class TableViewController: UITableViewController {
                 let webSiteDescription = try JSONDecoder().decode(Walks.Welcome.self, from: data)
                 
                 for one in webSiteDescription.walks {
-                    let walk = Walks()
-
-//                    if let context = (UIApplication.shared.delegate as? CoreDataStack)?.persistentContainer.viewContext {
+                    let walk = WalksData()
                     
-                        DispatchQueue.main.async {
-                        //let walksData = WalksData(context: context)
+                    DispatchQueue.main.async {
                         walk.walkTitle = one.walkTitle
-                        //print(walksData.walkTitle)
                         walk.walkDescription = one.walkDescription
                         walk.walkIcon = one.walkIcon
                         walk.walkIllustration = one.walkIllustration
@@ -95,53 +92,59 @@ class TableViewController: UITableViewController {
                         walk.walkRating = one.walkRating
                         
                         self.walks?.append(walk)
-//                        do {
-//                            try context.save()
-//                            print("Save complit")
-//                        } catch let error {
-//                                        print("\(error)")
-//                        }
+                        
                         self.tableView.reloadData();
                     }
-                    
-//                    walk.walkTitle = one.walkTitle
-//                    walk.walkDescription = one.walkDescription
-//                    walk.walkIcon = one.walkIcon
-//                    walk.walkIllustration = one.walkIllustration
-//                    walk.walkStartCoordLat = one.walkStartCoordLat
-//                    walk.walkStartCoordLong = one.walkStartCoordLong
-//                    walk.walkID = one.walkID
-//                    walk.walkRating = one.walkRating
-                    
-         //       }
-               // DispatchQueue.main.async {
-                    //
                 }
-                self.tableView.reloadData()
             }catch let jsonErr {
                 print(jsonErr)
             }
             
             } .resume()
-        }
+    }
+    
+    func saveCoreData() {
+        
+        if let context = (UIApplication.shared.delegate as? AppDelegate)?.coreDataStack.persistentContainer.viewContext {
+            let walksData = WalksData(context: context)
+            
+            for one in walks! {
+                walksData.walkTitle = one.walkTitle
+                walksData.walkDescription = one.walkDescription
+                walksData.walkIcon = one.walkIcon
+                walksData.walkIllustration = one.walkIllustration
+                walksData.walkStartCoordLat = one.walkStartCoordLat
+                walksData.walkStartCoordLong = one.walkStartCoordLong
+                walksData.walkID = one.walkID
+                walksData.walkRating = one.walkRating
+            }
 
+            do {
+                try context.save()
+                print("sssssssssssssssssssssss Core Data save complit")
+            } catch let error {
+                print("\(error)")
+            }
+        }
+    }
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-
+    
     // MARK: - Table view data source
-
+    
     override func numberOfSections(in tableView: UITableView) -> Int {
         // #warning Incomplete implementation, return the number of sections
         return 1
     }
-
+    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         // #warning Incomplete implementation, return the number of rows
         return walks?.count ?? 0
     }
-
+    
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath) as! TableViewCell
@@ -157,19 +160,19 @@ class TableViewController: UITableViewController {
         if self.walks?[indexPath.item].walkIllustration != nil {
             
         }
-
+        
         return cell
     }
     
-
+    
     /*
-    // Override to support conditional editing of the table view.
-    override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
-        return true
-    }
-    */
-
+     // Override to support conditional editing of the table view.
+     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
+     // Return false if you do not want the specified item to be editable.
+     return true
+     }
+     */
+    
     
     // Override to support editing the table view.
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
@@ -184,25 +187,25 @@ class TableViewController: UITableViewController {
         }    
     }
     
-
+    
     /*
-    // Override to support rearranging the table view.
-    override func tableView(_ tableView: UITableView, moveRowAt fromIndexPath: IndexPath, to: IndexPath) {
-
-    }
-    */
-
+     // Override to support rearranging the table view.
+     override func tableView(_ tableView: UITableView, moveRowAt fromIndexPath: IndexPath, to: IndexPath) {
+     
+     }
+     */
+    
     /*
-    // Override to support conditional rearranging of the table view.
-    override func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the item to be re-orderable.
-        return true
-    }
-    */
-
+     // Override to support conditional rearranging of the table view.
+     override func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
+     // Return false if you do not want the item to be re-orderable.
+     return true
+     }
+     */
+    
     
     // MARK: - Navigation
-
+    
     // In a storyboard-based application, you will often want to do a little preparation before navigation
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         
